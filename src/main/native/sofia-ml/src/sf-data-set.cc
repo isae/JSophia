@@ -49,12 +49,23 @@ SfDataSet::SfDataSet(const string& file_name,
     exit(1);
   }
 
+  loadInstances(file_stream);
+
+  delete[] local_buffer;
+}
+
+
+SfDataSet::SfDataSet(std::istream& in, bool use_bias_term)
+: use_bias_term_(use_bias_term) {
+    loadInstances(in);
+}
+
+
+void SfDataSet::loadInstances(std::istream& in){
   string line_string;
-  while (getline(file_stream, line_string)) {
+  while (getline(in, line_string)) {
     AddVector(line_string);
   }
-  
-  delete[] local_buffer;
 }
 
 string SfDataSet::AsString() const {

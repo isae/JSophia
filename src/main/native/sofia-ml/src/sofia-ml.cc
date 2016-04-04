@@ -27,6 +27,7 @@
 #include <ctime>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 #include "sf-hash-weight-vector.h"
@@ -41,6 +42,7 @@ void CommandLine(int argc, char** argv) {
   AddFlag("--test_file", "File to be used for testing.", string(""));
   AddFlag("--results_file", "File to which to write predictions.", string(""));
   AddFlag("--model_in", "Read in a model from this file.", string(""));
+  AddFlag("--model_param", "Read in a model from this string.", string(""));
   AddFlag("--model_out", "Write the model to this file.", string(""));
   AddFlag("--random_seed",
 	  "When set to non-zero value, use this seed instead of seed from system clock.\n"
@@ -125,6 +127,15 @@ void CommandLine(int argc, char** argv) {
 	  "    this flag as no effect for rank and roc optimzation.\n"
 	  "    Default: not set.",
 	  bool(false));
+  AddFlag("--return_model",
+  	  "If set, return model in output stream; Default: not set.",
+  	  bool(false));
+  AddFlag("--stdin_training_data",
+  	  "If set, read training data from stdin; Default: not set.",
+  	  bool(false));
+  AddFlag("--return_predictions",
+    	  "If set, return predictions in output stream; Default: not set.",
+    	  bool(false));
   ParseFlags(argc, argv);
 }
 
@@ -146,6 +157,12 @@ void SaveModelToFile(const string& file_name, SfWeightVector* w) {
   std::cerr << "   Done." << std::endl;
 }
 
+void ReturnModel(SfWeightVector* w) {
+  std::cerr << "Writing model to: stout" << std::endl;
+  std::cout << w->AsString() << std::endl;
+  std::cerr << "   Done." << std::endl;
+}
+
 void LoadModelFromFile(const string& file_name, SfWeightVector** w) {
   if (*w != NULL) {
     delete *w;
@@ -162,6 +179,20 @@ void LoadModelFromFile(const string& file_name, SfWeightVector** w) {
   string model_string;
   std::getline(model_stream, model_string);
   model_stream.close();
+  std::cerr << "   Done." << std::endl;
+
+  *w = new SfWeightVector(model_string);
+  assert(*w != NULL);
+}
+
+void LoadModelFromString(const string& string_model, SfWeightVector** w) {
+  if (*w != NULL) {
+    delete *w;
+  }
+
+  std::stringstream model_stream(string_model, std::fstream::in);
+  string model_string;
+  std::getline(model_stream, model_string);
   std::cerr << "   Done." << std::endl;
 
   *w = new SfWeightVector(model_string);
@@ -306,6 +337,11 @@ int main (int argc, char** argv) {
   if (!CMD_LINE_STRINGS["--model_in"].empty()) {
     LoadModelFromFile(CMD_LINE_STRINGS["--model_in"], &w); 
   }
+
+  // Load model from argument(overwriting empty model), if needed.
+  if (!CMD_LINE_STRINGS["--model_param"].empty()) {
+      LoadModelFromString(CMD_LINE_STRINGS["--model_param"], &w);
+  }
   
   // Train model, if needed.
   if (!CMD_LINE_STRINGS["--training_file"].empty()) {
@@ -337,17 +373,30 @@ int main (int argc, char** argv) {
   if (!CMD_LINE_STRINGS["--model_out"].empty()) {
     SaveModelToFile(CMD_LINE_STRINGS["--model_out"], w);
   }
+
+  // Write model to output stream
+  if (CMD_LINE_BOOLS["--return_model"]) {
+    ReturnModel(w);
+  }
     
   // Test model on test data, if needed.
   if (!CMD_LINE_STRINGS["--test_file"].empty()) {
-    std::cerr << "Reading test data from: " 
-	      << CMD_LINE_STRINGS["--test_file"] << std::endl;
-    clock_t read_data_start = clock();
-    SfDataSet test_data(CMD_LINE_STRINGS["--test_file"],
-			CMD_LINE_INTS["--buffer_mb"],
-			!CMD_LINE_BOOLS["--no_bias_term"]);
-    PrintElapsedTime(read_data_start, "Time to read test data: ");
-    
+    SfDataSet* test_data_ptr;
+    if(!CMD_LINE_BOOLS["stdin_training_data"]){
+        std::cerr << "Reading test data from: "
+    	      << CMD_LINE_STRINGS["--test_file"] << std::endl;
+        clock_t read_data_start = clock();
+        test_data_ptr = new SfDataSet(CMD_LINE_STRINGS["--test_file"],
+    			CMD_LINE_INTS["--buffer_mb"],
+    			!CMD_LINE_BOOLS["--no_bias_term"]);
+        PrintElapsedTime(read_data_start, "Time to read test data: ");
+    } else {
+        test_data_ptr = new SfDataSet(std::cin, !CMD_LINE_BOOLS["--no_bias_term"]);
+    }
+
+    SfDataSet test_data = *test_data_ptr;
+    delete test_data_ptr;
+
     vector<float> predictions;
     clock_t predict_start = clock();
     if (CMD_LINE_STRINGS["--prediction_type"] == "linear")
@@ -361,22 +410,31 @@ int main (int argc, char** argv) {
     }
 
     PrintElapsedTime(predict_start, "Time to make test prediction results: ");
-    
-    std::fstream prediction_stream;
-    prediction_stream.open(CMD_LINE_STRINGS["--results_file"].c_str(),
-			   std::fstream::out);
-    if (!prediction_stream) {
-      std::cerr << "Error opening test results output file " 
-		<< CMD_LINE_STRINGS["--results_file"] << std::endl;
-      exit(1);
+
+    // Write model to output stream
+    if (CMD_LINE_BOOLS["--return_predictions"]) {
+        ReturnModel(w);
+        for (unsigned int i = 0; i < predictions.size(); ++i) {
+            std::cout << predictions[i] << "\t"
+                << test_data.VectorAt(i).GetY() << std::endl;
+        }
+    } else {
+      std::fstream prediction_stream;
+      prediction_stream.open(CMD_LINE_STRINGS["--results_file"].c_str(),
+      			   std::fstream::out);
+      if (!prediction_stream) {
+        std::cerr << "Error opening test results output file "
+        << CMD_LINE_STRINGS["--results_file"] << std::endl;
+        exit(1);
+      }
+      std::cerr << "Writing test results to: "
+          << CMD_LINE_STRINGS["--results_file"] << std::endl;
+      for (unsigned int i = 0; i < predictions.size(); ++i) {
+        prediction_stream << predictions[i] << "\t"
+            << test_data.VectorAt(i).GetY() << std::endl;
+      }
+      prediction_stream.close();
     }
-    std::cerr << "Writing test results to: "
-	      << CMD_LINE_STRINGS["--results_file"] << std::endl;
-    for (unsigned int i = 0; i < predictions.size(); ++i) {
-      prediction_stream << predictions[i] << "\t" 
-			<< test_data.VectorAt(i).GetY() << std::endl;
-    }
-    prediction_stream.close();
     std::cerr << "   Done." << std::endl;
   }
 }
