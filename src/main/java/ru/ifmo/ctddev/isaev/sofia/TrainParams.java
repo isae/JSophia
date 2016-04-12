@@ -11,6 +11,11 @@ public class TrainParams {
         return this;
     }
 
+    public TrainParams() {
+        argsBuilder.append("--return_model");
+        argsBuilder.append("--stdin_train_data");
+    }
+
     public TrainParams randomSeed(long randomSeed) {
         return addArgument("--random_seed", String.valueOf(randomSeed));
     }

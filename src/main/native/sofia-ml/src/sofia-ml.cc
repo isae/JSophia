@@ -130,9 +130,12 @@ void CommandLine(int argc, char** argv) {
   AddFlag("--return_model",
   	  "If set, return model in output stream; Default: not set.",
   	  bool(false));
-  AddFlag("--stdin_training_data",
+  AddFlag("--stdin_test_data",
   	  "If set, read training data from stdin; Default: not set.",
   	  bool(false));
+  AddFlag("--stdin_train_data",
+          "If set, read training data from stdin; Default: not set.",
+          bool(false));
   AddFlag("--return_predictions",
     	  "If set, return predictions in output stream; Default: not set.",
     	  bool(false));
@@ -344,21 +347,34 @@ int main (int argc, char** argv) {
   }
   
   // Train model, if needed.
-  if (!CMD_LINE_STRINGS["--training_file"].empty()) {
+  bool train_file = !CMD_LINE_STRINGS["--training_file"].empty();
+  bool train_from_std = CMD_LINE_BOOLS["--stdin_train_data"];
+
+  if (train_file || train_from_std) {
     std::cerr << "Reading training data from: " 
 	      << CMD_LINE_STRINGS["--training_file"] << std::endl;
     clock_t read_data_start = clock();
-    SfDataSet training_data(CMD_LINE_STRINGS["--training_file"],
-			    CMD_LINE_INTS["--buffer_mb"],
-			    !CMD_LINE_BOOLS["--no_bias_term"]);
+    SfDataSet* training_data_ptr;
+    if (train_file){
+        training_data_ptr = new SfDataSet(
+            CMD_LINE_STRINGS["--training_file"],
+            CMD_LINE_INTS["--buffer_mb"],
+            !CMD_LINE_BOOLS["--no_bias_term"]
+        );
+    } else {
+        training_data_ptr = new SfDataSet(
+            std::cin,
+            !CMD_LINE_BOOLS["--no_bias_term"]
+        );
+    }
     PrintElapsedTime(read_data_start, "Time to read training data: ");
 
-    TrainModel(training_data, w);
+    TrainModel(*training_data_ptr, w);
 
     // Compute value of objective function on training data, if needed.
     if (CMD_LINE_BOOLS["--training_objective"]) {
       clock_t compute_objective_start = clock();
-      float objective = sofia_ml::SvmObjective(training_data,
+      float objective = sofia_ml::SvmObjective(*training_data_ptr,
 					      *w,
 					      CMD_LINE_BOOLS["--lambda"]);
       PrintElapsedTime(compute_objective_start,
@@ -382,7 +398,7 @@ int main (int argc, char** argv) {
   // Test model on test data, if needed.
   if (!CMD_LINE_STRINGS["--test_file"].empty()) {
     SfDataSet* test_data_ptr;
-    if(!CMD_LINE_BOOLS["stdin_training_data"]){
+    if(!CMD_LINE_BOOLS["--stdin_test_data"]){
         std::cerr << "Reading test data from: "
     	      << CMD_LINE_STRINGS["--test_file"] << std::endl;
         clock_t read_data_start = clock();
