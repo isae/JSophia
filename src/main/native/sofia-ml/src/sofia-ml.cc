@@ -144,7 +144,7 @@ void CommandLine(int argc, char** argv) {
 
 void PrintElapsedTime(clock_t start, const string& message) {
   float num_secs = static_cast<double>(clock() - start) / CLOCKS_PER_SEC;
-  std::cout << message << num_secs << std::endl;
+  std::cerr << message << num_secs << std::endl;
 }
 
 void SaveModelToFile(const string& file_name, SfWeightVector* w) {
@@ -351,11 +351,11 @@ int main (int argc, char** argv) {
   bool train_from_std = CMD_LINE_BOOLS["--stdin_train_data"];
 
   if (train_file || train_from_std) {
-    std::cerr << "Reading training data from: " 
-	      << CMD_LINE_STRINGS["--training_file"] << std::endl;
     clock_t read_data_start = clock();
     SfDataSet* training_data_ptr;
     if (train_file){
+        std::cerr << "Reading training data from: "
+	      << CMD_LINE_STRINGS["--training_file"] << std::endl;
         training_data_ptr = new SfDataSet(
             CMD_LINE_STRINGS["--training_file"],
             CMD_LINE_INTS["--buffer_mb"],
@@ -379,7 +379,7 @@ int main (int argc, char** argv) {
 					      CMD_LINE_BOOLS["--lambda"]);
       PrintElapsedTime(compute_objective_start,
 		       "Time to compute objective on training data: ");
-      std::cout << "Value of objective function on training data after "
+      std::cerr << "Value of objective function on training data after "
 		<< CMD_LINE_INTS["--iterations"] << " iterations: "
 		<< objective << std::endl;
     }

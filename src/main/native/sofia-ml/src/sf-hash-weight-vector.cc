@@ -42,7 +42,7 @@ SfHashWeightVector::SfHashWeightVector(int hash_mask_bits)
   }
   hash_mask_ = SfHashMask(hash_mask_bits);
 
-  std::cout << "hash_mask_ " << hash_mask_ << std::endl;
+  std::cerr << "hash_mask_ " << hash_mask_ << std::endl;
 }
 
 SfHashWeightVector::SfHashWeightVector(int hash_mask_bits,

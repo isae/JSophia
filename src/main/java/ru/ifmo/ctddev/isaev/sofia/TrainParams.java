@@ -1,30 +1,39 @@
 package ru.ifmo.ctddev.isaev.sofia;
 
+import java.util.ArrayList;
+import java.util.List;
+
+
 /**
  * @author iisaev
  */
 public class TrainParams {
-    private final StringBuilder argsBuilder = new StringBuilder();
+    private final List<String> argsBuilder = new ArrayList<>();
+
+    public List<String> getArgs() {
+        return argsBuilder;
+    }
 
     private TrainParams addArgument(String argName, String argValue) {
-        argsBuilder.append(argName).append(" ").append(argValue);
+        argsBuilder.add(argName);
+        argsBuilder.add(argValue);
         return this;
     }
 
     public TrainParams() {
-        argsBuilder.append("--return_model");
-        argsBuilder.append("--stdin_train_data");
+        argsBuilder.add("--return_model");
+        argsBuilder.add("--stdin_train_data");
     }
 
-    public TrainParams randomSeed(long randomSeed) {
+    public TrainParams randomSeed(int randomSeed) {
         return addArgument("--random_seed", String.valueOf(randomSeed));
     }
 
-    public TrainParams dimensionality(long dimensionality) {
+    public TrainParams dimensionality(int dimensionality) {
         return addArgument("--dimensionality", String.valueOf(dimensionality));
     }
 
-    public TrainParams hashMaskBits(long hashMaskBits) {
+    public TrainParams hashMaskBits(int hashMaskBits) {
         return addArgument("--hash_mask_bits", String.valueOf(hashMaskBits));
     }
 
@@ -52,7 +61,7 @@ public class TrainParams {
         return addArgument("--perceptron_margin_size", String.valueOf(perceptronMarginSize));
     }
 
-    public TrainParams iterations(long iterations) {
+    public TrainParams iterations(int iterations) {
         return addArgument("--iterations", String.valueOf(iterations));
     }
 
@@ -72,8 +81,4 @@ public class TrainParams {
         return addArgument("--prediction_type", predictionType.getArg());
     }
 
-    @Override
-    public String toString() {
-        return argsBuilder.toString();
-    }
 }

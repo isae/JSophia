@@ -121,14 +121,14 @@ void AddFlag(const string& flag_name,
 }
 
 void ShowHelp() {
-  std::cout << "Command line flag options: " << std::endl;
+  std::cerr << "Command line flag options: " << std::endl;
   for (map<string,string>::iterator iter = CMD_LINE_DESCRIPTIONS.begin();
        iter != CMD_LINE_DESCRIPTIONS.end();
        iter++) {
     fprintf(stderr, "      %-20s", iter->first.c_str());
     fprintf(stderr, "  %s\n\n", iter->second.c_str());
   }
-  std::cout << std::endl;
+  std::cerr << std::endl;
   exit(0);
 }
 

@@ -42,6 +42,7 @@ public class ExecutableLoader {
             commands.add(executable.getAbsolutePath());
             commands.addAll(args);
             ProcessBuilder builder = new ProcessBuilder(commands);
+            builder.redirectErrorStream(false);
             return builder.start();
         } catch (IOException e) {
             throw new IllegalStateException("IO error", e);
