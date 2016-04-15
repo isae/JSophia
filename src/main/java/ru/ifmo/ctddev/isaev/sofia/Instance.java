@@ -22,7 +22,7 @@ public class Instance {
                 features.keySet().stream()
                         .sorted()
                         .map(k -> String.format("%d:%d", k, features.get(k)))
-        ).collect(Collectors.joining(" "))+" ";
+        ).collect(Collectors.joining(" "));
     }
 
     public Instance(Integer clazz, Map<Integer, Integer> features) {

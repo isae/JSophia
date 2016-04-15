@@ -65,7 +65,6 @@ void SfDataSet::loadInstances(std::istream& in){
   string line_string;
   while (getline(in, line_string)) {
     AddVector(line_string);
-    std::cerr << "Read instance" << std::endl;
   }
 }
 
