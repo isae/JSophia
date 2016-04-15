@@ -1,11 +1,16 @@
 package ru.ifmo.ctddev.isaev.sofia;
 
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.nio.charset.StandardCharsets;
+import java.math.BigInteger;
+import java.nio.file.FileSystem;
 import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 
@@ -17,9 +22,19 @@ public class JSofiaClassifier {
 
     private static final ExecutableLoader LOADER = new ExecutableLoader();
 
+    private static final FileSystem FILE_SYSTEM = Jimfs.newFileSystem(Configuration.unix());
+
+    private static final Random RANDOM = new Random();
+
     public void train(TrainParams trainParams, List<Instance> trainDs) {
         train(trainParams, trainDs.stream());
     }
+
+    private String getRandomFileName() {
+        return "/" + (new BigInteger(130, RANDOM).toString(32));
+    }
+
+    private String model;
 
     public void train(TrainParams trainParams, Stream<Instance> trainDs) {
         if (trained) {
@@ -27,28 +42,22 @@ public class JSofiaClassifier {
         }
         try {
             Process process = LOADER.execute(trainParams.getArgs());
-            OutputStreamWriter writer = new OutputStreamWriter(process.getOutputStream(), StandardCharsets.US_ASCII);
-            new Thread(() -> {
-                trainDs.forEach(inst -> {
-                    String tmp = inst.toString();
-                    try {
-                        System.out.println("1");
-                        writer.write(tmp);
-                        System.out.println("2");
-                        writer.write('\n');
-                    } catch (IOException e) {
-                        System.out.println(String.format("Failed to write string %s", tmp));
-                        throw new RuntimeException(e);
-                    }
-                });
-            }).start();
-            writer.close();
-            process.waitFor();
-            BufferedReader sout2 = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            sout2.lines().forEach(System.out::println);
-            //List<Double> model = sout2.lines().flatMap(s -> Stream.of(s.split("\\s+"))).map(Double::valueOf).collect(Collectors.toList());
-            //model.forEach(System.out::println);
-
+            trainDs.forEach(inst -> {
+                try {
+                    process.getOutputStream().write(inst.toString().getBytes());
+                    process.getOutputStream().write('\n');
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+            process.getOutputStream().close();
+            model = new BufferedReader(new InputStreamReader(process.getInputStream())).readLine();
+                    /*.lines()
+                    .flatMap(s -> Stream.of(s.split("\\s+")))
+                    .map(Double::valueOf)
+                    .collect(Collectors.toList());*/
+            int errCode = process.waitFor();
+            System.out.println(String.format("Error code: %d", errCode));
             trained = true;
         } catch (Exception e) {
             throw new IllegalArgumentException("Failed to train on given dataset", e);
@@ -59,7 +68,27 @@ public class JSofiaClassifier {
         if (!trained) {
             throw new IllegalStateException("Classifier is not trained yet");
         }
-        return null;
+        try {
+            Process process = LOADER.execute(new TestParams().getArgs());
+            process.getOutputStream().write(model.getBytes());
+            process.getOutputStream().write('\n');
+            testDs.forEach(inst -> {
+                try {
+                    process.getOutputStream().write(inst.toString().getBytes());
+                    process.getOutputStream().write('\n');
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+            process.getOutputStream().close();
+            return new BufferedReader(new InputStreamReader(process.getInputStream()))
+                    .lines()
+                    .map(s -> s.split("\\s+"))
+                    .map(arr -> Integer.valueOf(arr[1]))
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to train on given dataset", e);
+        }
     }
 
     public List<Integer> test(List<Instance> testDs) {

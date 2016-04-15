@@ -1,23 +1,31 @@
 package ru.ifmo.ctddev.isaev.sofia;
 
+import java.util.ArrayList;
+import java.util.List;
+
+
 /**
  * @author iisaev
  */
 public class TestParams {
-    private final StringBuilder argsBuilder = new StringBuilder();
+    private final List<String> argsBuilder = new ArrayList<>();
+
+    public List<String> getArgs() {
+        return argsBuilder;
+    }
 
     public TestParams() {
-        argsBuilder.append("--stdin_test_data");
-        argsBuilder.append("--return_predictions");
+        argsBuilder.add("--stdin_test_data");
+        argsBuilder.add("--test_file");
+        argsBuilder.add("ololo");
+        argsBuilder.add("--return_predictions");
+        argsBuilder.add("--model_first_line");
     }
 
     private TestParams addArgument(String argName, String argValue) {
-        argsBuilder.append(argName).append(" ").append(argValue);
+        argsBuilder.add(argName);
+        argsBuilder.add(argValue);
         return this;
-    }
-
-    public TestParams model(String model) {
-        return addArgument("--model_param", model);
     }
 
     @Override

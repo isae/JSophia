@@ -42,7 +42,7 @@ public class WrapperAgainstPureTest {
     }
 
     @Test
-    public void testWrapperAgainstPure() throws FileNotFoundException {
+    public void testWrapperAgainstPure() throws IOException, InterruptedException {
         Process proc = loader.execute("--learner_type", "pegasos",
                 "--loop_type", "stochastic",
                 "--lambda", "0.1",
@@ -51,10 +51,9 @@ public class WrapperAgainstPureTest {
                 "--training_file", "src/main/native/sofia-ml/demo/demo.train",
                 "--model_out", "src/test/temp/model");
         BufferedReader sout = new BufferedReader(new InputStreamReader(proc.getInputStream()));
-        BufferedReader serr = new BufferedReader(new InputStreamReader(proc.getErrorStream()));
         sout.lines().forEach(System.out::println);
         System.out.println("_____________________");
-        serr.lines().forEach(System.out::println);
+        proc.waitFor();
 
         Process proc2 = loader.execute(
                 "--model_in", "src/test/temp/model",
@@ -62,10 +61,10 @@ public class WrapperAgainstPureTest {
                 "--results_file", "src/test/temp/predictions"
         );
         BufferedReader sout2 = new BufferedReader(new InputStreamReader(proc2.getInputStream()));
-        BufferedReader serr2 = new BufferedReader(new InputStreamReader(proc2.getErrorStream()));
         sout2.lines().forEach(System.out::println);
         System.out.println("_____________________");
-        serr2.lines().forEach(System.out::println);
+        proc2.waitFor();
+
         File resultsFile = new File("src/test/temp/predictions");
         List<Integer> runResults = new BufferedReader(new FileReader(resultsFile))
                 .lines()
@@ -74,6 +73,9 @@ public class WrapperAgainstPureTest {
                 .collect(Collectors.toList());
 
         List<Instance> trainInstances = readDataset("src/main/native/sofia-ml/demo/demo.train");
+        PrintWriter writer = new PrintWriter(new FileWriter("src/test/temp/temp.train"));
+        trainInstances.forEach(writer::println);
+        writer.close();
         List<Instance> testInstances = readDataset("src/main/native/sofia-ml/demo/demo.test");
 
         JSofiaClassifier classifier = new JSofiaClassifier();
@@ -82,7 +84,7 @@ public class WrapperAgainstPureTest {
                 .loopType(LoopType.STOCHASTIC)
                 .lambda(0.1)
                 .iterations(100000)
-                .dimensionality(trainInstances.get(0).getFeatures().size()), trainInstances);
+                .dimensionality(150000), trainInstances);
         List<Integer> results = classifier.test(testInstances);
 
         assertArrayEquals("Results of simple call are equal to predefined",

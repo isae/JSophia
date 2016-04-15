@@ -42,7 +42,6 @@ void CommandLine(int argc, char** argv) {
   AddFlag("--test_file", "File to be used for testing.", string(""));
   AddFlag("--results_file", "File to which to write predictions.", string(""));
   AddFlag("--model_in", "Read in a model from this file.", string(""));
-  AddFlag("--model_param", "Read in a model from this string.", string(""));
   AddFlag("--model_out", "Write the model to this file.", string(""));
   AddFlag("--random_seed",
 	  "When set to non-zero value, use this seed instead of seed from system clock.\n"
@@ -127,6 +126,7 @@ void CommandLine(int argc, char** argv) {
 	  "    this flag as no effect for rank and roc optimzation.\n"
 	  "    Default: not set.",
 	  bool(false));
+  AddFlag("--model_first_line", "Read in a model from first line of stdin.", bool(false));
   AddFlag("--return_model",
   	  "If set, return model in output stream; Default: not set.",
   	  bool(false));
@@ -188,15 +188,14 @@ void LoadModelFromFile(const string& file_name, SfWeightVector** w) {
   assert(*w != NULL);
 }
 
-void LoadModelFromString(const string& string_model, SfWeightVector** w) {
+void LoadModelFromStdin(SfWeightVector** w) {
   if (*w != NULL) {
     delete *w;
   }
 
-  std::stringstream model_stream(string_model, std::fstream::in);
   string model_string;
-  std::getline(model_stream, model_string);
-  std::cerr << "   Done." << std::endl;
+  std::getline(std::cin, model_string);
+  std::cerr << "   Done. Model has been read from first line of stdin" << std::endl;
 
   *w = new SfWeightVector(model_string);
   assert(*w != NULL);
@@ -342,8 +341,8 @@ int main (int argc, char** argv) {
   }
 
   // Load model from argument(overwriting empty model), if needed.
-  if (!CMD_LINE_STRINGS["--model_param"].empty()) {
-      LoadModelFromString(CMD_LINE_STRINGS["--model_param"], &w);
+  if (CMD_LINE_BOOLS["--model_first_line"]) {
+      LoadModelFromStdin(&w);
   }
   
   // Train model, if needed.
@@ -429,7 +428,6 @@ int main (int argc, char** argv) {
 
     // Write model to output stream
     if (CMD_LINE_BOOLS["--return_predictions"]) {
-        ReturnModel(w);
         for (unsigned int i = 0; i < predictions.size(); ++i) {
             std::cout << predictions[i] << "\t"
                 << test_data.VectorAt(i).GetY() << std::endl;
